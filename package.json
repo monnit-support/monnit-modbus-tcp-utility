@@ -1,0 +1,143 @@
+{
+  "name": "monnit-modbus-tcp-utility",
+  "version": "2.1.2",
+  "description": "A tool to monitor and configure Monnit Ethernet Gateways via MODBUS TCP.",
+  "main": "main.js",
+  "type": "module",
+  "author": "Monnit",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/monnit-support/monnit-modbus-tcp-utility"
+  },
+  "scripts": {
+    "start": "electron .",
+    "server": "node app.js",
+    "rebuild": "electron-rebuild",
+    "fix:bug": "ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron scripts/fix-bug.mjs",
+    "dist": "electron-builder -p always",
+    "dist:win": "node scripts/dist-win.mjs --win -p never",
+    "dist:win:release": "node scripts/dist-win.mjs --win -p always",
+    "dist:mac": "electron-builder --mac -p always",
+    "dist:linux": "electron-builder --linux -p always",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@bacnet-js/client": "^3.0.1",
+    "@google/genai": "^1.41.0",
+    "avahi-browse": "^1.1.4",
+    "axios": "^1.7.9",
+    "better-sqlite3": "^11.10.0",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.7",
+    "electron-updater": "^6.3.9",
+    "jsmodbus": "^4.0.0",
+    "lora-packet": "^0.8.0",
+    "mqtt": "^5.14.1",
+    "net-snmp": "^3.26.0",
+    "nodemailer": "^6.9.16",
+    "selfsigned": "^2.4.1",
+    "textbelt": "^0.0.4"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.2.13",
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^25.2.3",
+    "@vitest/coverage-v8": "^4.1.5",
+    "cross-env": "^10.1.0",
+    "electron": "^31.2.1",
+    "electron-builder": "^24.13.3",
+    "eslint": "^9.39.4",
+    "globals": "^17.6.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.5"
+  },
+  "overrides": {
+    "glob": "^10.3.10",
+    "rimraf": "^5.0.5"
+  },
+  "build": {
+    "appId": "com.monnit.utility",
+    "productName": "Monnit ALTA MODBUS TCP Utility",
+    "artifactName": "Monnit-ALTA-MODBUS-TCP-Utility-Setup-${version}.${ext}",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "monnit-support",
+        "repo": "monnit-modbus-tcp-utility",
+        "releaseType": "release"
+      }
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "public/icon.icns",
+      "category": "public.app-category.utilities",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico",
+      "verifyUpdateCodeSignature": false,
+      "signAndEditExecutable": false
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "extraResources": [
+      {
+        "from": "public/favicon.ico",
+        "to": "tray-icon.ico"
+      },
+      {
+        "from": "public/tray-icon.png",
+        "to": "tray-icon.png"
+      },
+      {
+        "from": "Documentation",
+        "to": "Documentation",
+        "filter": [
+          "**/*.pdf"
+        ]
+      },
+      {
+        "from": "DOCs",
+        "to": "DOCs",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "files": [
+      "**/*",
+      "!**/*.ts",
+      "!*.map",
+      "!package-lock.json",
+      "!Documentation",
+      "!DOCs"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "releaseInfo": {
+      "releaseNotesFile": "CHANGELOG.md"
+    }
+  }
+}

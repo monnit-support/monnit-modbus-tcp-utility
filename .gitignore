@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+
+# Secrets — never commit tokens (GitHub uses GH_TOKEN / GITHUB_TOKEN in the environment)
+.env
+.env.*
+scripts/.env

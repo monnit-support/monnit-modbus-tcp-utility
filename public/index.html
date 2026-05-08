@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8">
+  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monnit MODBUS TCP Utility</title>
+    <link rel="icon" href="favicon.ico">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        /* Add some specific styles for the experimental features link */
+        #experimental-features-link {
+            font-size: 0.65em;
+            color: var(--subtle-text-color);
+            opacity: 0.4;
+            text-decoration: none !important;
+            cursor: pointer;
+        }
+        
+        /* Ensure no color change or underline on hover, only pointer */
+        #experimental-features-link:hover, 
+        #experimental-features-link:focus, 
+        #experimental-features-link:active {
+            color: var(--subtle-text-color) !important;
+            text-decoration: none !important;
+            opacity: 0.4;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Main Dashboard View -->
+        <div id="main-dashboard-view">
+            <header>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <img src="logo.png" alt="Logo" width="50" height="50">
+                    <div>
+                        <h1 id="main-title" style="margin-bottom: 0; line-height: 1;">Monnit MODBUS TCP Utility</h1>
+                        <small id="app-version" style="font-size: 0.75em; color: var(--subtle-text-color); font-weight: 400; display: block; margin-top: 2px;">Loading...</small>
+                    </div>
+                </div>
+                <span id="latest-log-message"></span>
+                <button id="poll-button" class="button">Start Polling</button>
+            </header>
+
+            <div class="status-header" id="status-header">
+                <button id="refresh-app-button" onclick="location.reload()" style="padding: 5px 10px; font-size: 0.8em; background-color: transparent; color: var(--subtle-text-color); border: none; cursor: pointer;">Refresh App</button>
+                <span class="log-toggle-arrow down" id="status-toggle-arrow" role="button" tabindex="0" title="Expand/collapse status bar">▶</span>
+                <h4>Status</h4>
+                <button id="status-problem-indicator" class="info-icon-btn hidden" title="One or more systems are inactive">i</button>
+            </div>
+            <div id="status-bar">
+                <div id="server-status">Server: Initializing...</div>
+                <div id="gateway-status">Gateway: Not Detected</div>
+                <div id="sensors-status">Sensors: 0/0 Active</div>
+                <div id="alerting-status">Alerting: Not Configured</div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-link active" data-tab="devices-content">Monnit Devices</button>
+                <!-- HIDDEN BY DEFAULT: External Devices Tab -->
+                <button class="tab-link hidden" data-tab="external-devices-content" id="external-devices-tab">External Devices</button>
+                <button class="tab-link" data-tab="gateway-settings-content">Gateway Settings</button>
+                <button class="tab-link" data-tab="portal-settings-content">Portal Settings</button>
+            </div>
+
+            <!-- Monnit Devices Tab -->
+            <div id="devices-content" class="tab-content active">
+                
+                <div id="info-bar" class="hidden">
+                    <div id="info-bar-main">
+                        <div id="polling-status-container">
+                            <div class="spinner"></div>
+                            <span id="polling-status-message"></span>
+                        </div>
+                        <div id="filter-container" class="hidden">
+                            <div class="filter-group">
+                                <label for="type-filter">Sensor Type</label>
+                                <select id="type-filter">
+                                    <option value="all">All Types</option>
+                                </select>
+                            </div>
+                             <div class="filter-group">
+                                <label for="color-group-filter">Color Group</label>
+                                <select id="color-group-filter">
+                                    <option value="all">All Groups</option>
+                                    <option value="none">None</option>
+                                    <option value="teal">Teal</option>
+                                    <option value="magenta">Magenta</option>
+                                    <option value="coral">Coral</option>
+                                    <option value="gold">Gold</option>
+                                    <option value="olive">Olive</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="aware-filter">Status</label>
+                                <select id="aware-filter">
+                                    <option value="all">All</option>
+                                    <option value="aware">Aware</option>
+                                    <option value="not-aware">Not Aware</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="battery-filter">Battery</label>
+                                <select id="battery-filter">
+                                    <option value="all">All</option>
+                                    <option value="low">Low Battery</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="signal-filter">Signal</label>
+                                 <select id="signal-filter">
+                                    <option value="all">All</option>
+                                    <option value="low">Low Signal</option>
+                                </select>
+                            </div>
+                            <button id="reset-filters-btn" class="button">Reset</button>
+                        </div>
+                    </div>
+                    <div id="info-bar-controls">
+                        <div id="view-toggle-container">
+                            <button id="card-view-btn" class="view-toggle-btn active" title="Card View">
+                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                            </button>
+                            <button id="list-view-btn" class="view-toggle-btn" title="List View">
+                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-note info" style="text-align: center; margin-bottom: 20px;" id="alert-repeat-notice">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 5px; flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    <span>Alerts with active triggers are sent every 60 minutes when a triggering condition persists.</span>
+                </div>
+                
+                <div class="devices-header">
+                     <button id="discover-sensors-btn" class="button secondary hidden">Discover Sensors</button>
+                     <div class="devices-header-controls">
+                        <button id="show-inactive-btn" class="button secondary hidden">Inactive Sensors</button>
+                     </div>
+                </div>
+
+                <div id="device-cards-container" class="card-view">
+                     <p class="no-data-message">Start polling to see device data.</p>
+                </div>
+            </div>
+
+            <!-- New External Devices Tab -->
+            <div id="external-devices-content" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <p class="settings-note info" style="margin: 0; flex-grow: 1; margin-right: 15px;">Extend functionality by enabling built-in plugins.</p>
+                    <a href="plugins.html" class="button secondary">Open Plugins Manager</a>
+                </div>
+                <!-- 
+                  This container will be populated by client.js's renderExternalDevices function.
+                  It will gain the .card-view or .list-view class to match the Monnit tab.
+                -->
+                <div id="external-device-cards-container" class="card-view">
+                    <p class="no-data-message">No external devices found. Enable a "Receive" plugin to see devices here.</p>
+                    <!-- External device cards will be dynamically inserted here -->
+                </div>
+            </div>
+
+
+            <!-- Gateway Settings Tab -->
+            <div id="gateway-settings-content" class="tab-content">
+                <div class="section-title-container">
+                    <h2>Gateway Management</h2>
+                </div>
+                <div class="gateway-management-subtitle">
+                    <p>Only a single gateway can be active at a time.</p>
+                    <button id="gateway-info-btn" class="info-icon-btn" title="Why only one active gateway?">i</button>
+                </div>
+                <div id="gateway-list-container">
+                    <p>No gateways found. Use the button below to find new gateways.</p>
+                </div>
+                <button id="find-gateway-btn" class="button">Find New Gateway</button>
+                
+                <div id="gateway-config-container" class="hidden">
+                    <hr style="margin: 20px 0; border-color: var(--border-color);">
+                    <div class="section-title-container">
+                        <h3>Gateway Configuration</h3>
+                    </div>
+                     <div class="sub-tabs">
+                        <button class="sub-tab-link active" data-page="status">Status</button>
+                        <button class="sub-tab-link" data-page="lan">LAN</button>
+                        <button class="sub-tab-link" data-page="wsn">Wireless Network</button>
+                        <button class="sub-tab-link" data-page="server">Default Server</button>
+                        <button class="sub-tab-link" data-page="modbus">Modbus TCP</button>
+                        <button class="sub-tab-link" data-page="snmp">SNMP</button>
+                        <button class="sub-tab-link" data-page="misc">Miscellaneous</button>
+                    </div>
+                    <div id="gateway-config-content">
+                        <!-- Content is dynamically injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Portal Settings Tab -->
+            <div id="portal-settings-content" class="tab-content">
+                <h2>Portal Configuration</h2>
+                <!-- NEW: Help Documentation Link -->
+                <a href="#" id="help-doc-link">Click for Help Documentation</a>
+
+                <div class="settings-section">
+                     <h3 class="settings-section-title">
+                        Alerts
+                        <label class="switch">
+                            <input type="checkbox" id="alerting-enabled-switch">
+                            <span class="slider round"></span>
+                        </label>
+                    </h3>
+
+                    <div id="alert-settings-container" class="hidden">
+                        <div class="alert-sub-toggles">
+                            <div class="form-group-inline">
+                                <label for="email-alerts-enabled-switch">Email Alerts</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="email-alerts-enabled-switch">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                             <div class="form-group-inline">
+                                <label for="sms-alerts-enabled-switch">SMS Alerts</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="sms-alerts-enabled-switch">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <p class="settings-note cautionary">Alerts require an active Internet connection.</p>
+
+                        <div class="settings-form">
+                            <h4>Repeat Alerts</h4>
+                            <div class="form-group">
+                                <label for="repeat-alert-interval">Repeat Alert Interval (minutes)</label>
+                                <div class="form-group-inline">
+                                    <input type="number" id="repeat-alert-interval" min="0" max="1440" placeholder="0 for disabled">
+                                    <button id="repeat-alert-info-btn" class="info-icon-btn" title="About Repeat Alerts">i</button>
+                                </div>
+                            </div>
+                            <button id="save-repeat-alert-btn" class="button">Save Repeat Alerts</button>
+                            <p id="repeat-alert-save-status" class="status-message"></p>
+                        </div>
+                        
+                        <div id="email-settings-container" class="settings-form hidden">
+                             <h4>Email Server (SMTP)</h4>
+                             <div class="form-group">
+                                <label for="smtp-server">Server</label>
+                                <input type="text" id="smtp-server" placeholder="e.g., smtp.example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="smtp-port">Port</label>
+                                <input type="number" id="smtp-port" placeholder="e.g., 587">
+                            </div>
+                            <div class="form-group">
+                                <label for="smtp-username">Username</label>
+                                <input type="text" id="smtp-username">
+                            </div>
+                            <div class="form-group">
+                                <label for="smtp-password">Password</label>
+                                <input type="password" id="smtp-password">
+                            </div>
+                             <div class="form-group">
+                                <label for="smtp-from-name">"From" Name</label>
+                                <input type="text" id="smtp-from-name" placeholder="e.g., Monnit Utility">
+                            </div>
+                            <div class="form-group">
+                                <label for="smtp-from-email">"From" Email</label>
+                                <input type="email" id="smtp-from-email" placeholder="e.g., no-reply@example.com">
+                            </div>
+                            <div class="form-group form-group-inline">
+                                <div style="flex-grow: 1;">
+                                    <label for="smtp-recipient-email">Alert Recipient Email</label>
+                                    <input type="email" id="smtp-recipient-email" placeholder="your.email@example.com">
+                                </div>
+                                <button id="send-test-email-btn" class="button secondary">Send Test</button>
+                                <div id="email-spinner" class="spinner hidden"></div>
+                            </div>
+                            <button id="save-email-settings-btn" class="button">Save Email Settings</button>
+                            <p id="email-test-status" class="status-message"></p>
+                        </div>
+
+                        <div id="sms-settings-container" class="settings-form hidden">
+                            <h4>SMS (Textbelt)</h4>
+                            <p class="settings-note">Textbelt offers 1 free SMS per day. You can purchase additional credits by visiting Textbelt directly.</p>
+                            <div class="form-group">
+                                <label for="textbelt-api-key">Textbelt API Key</label>
+                                <input type="text" id="textbelt-api-key" placeholder="e.g., textbelt_api_key">
+                            </div>
+                            <div class="form-group form-group-inline">
+                                 <div style="flex-grow: 1;">
+                                    <label for="sms-recipient-phone">SMS Recipient Mobile Phone Number</label>
+                                    <input type="tel" id="sms-recipient-phone" placeholder="e.g., 15551234567">
+                                </div>
+                                <button id="send-test-sms-btn" class="button secondary">Send Test</button>
+                                <div id="sms-spinner" class="spinner hidden"></div>
+                            </div>
+                            <button id="save-sms-settings-btn" class="button">Save SMS Settings</button>
+                            <p id="sms-test-status" class="status-message"></p>
+                        </div>
+
+                        <div class="settings-form">
+                            <h4>Custom Alert Message</h4>
+                            <div class="form-group">
+                                <label for="alert-custom-message">Message to include in alerts</label>
+                                <textarea id="alert-custom-message" rows="3" placeholder="e.g., Attention: A sensor at our facility requires your review." maxlength="100"></textarea>
+                                <p class="char-limit-warning">Character limit: 100</p>
+                            </div>
+                            <button id="save-alert-message-btn" class="button">Save Message</button>
+                            <p id="alert-message-save-status" class="status-message"></p>
+                        </div>
+                    </div>
+                </div>
+
+        <!-- Application Updates Section -->
+        <div class="settings-section">
+            <div>
+                <h3 class="settings-section-title">Application Updates</h3>
+            </div>
+            <div class="settings-form">
+                <div class="form-group-inline" style="display: none;">
+                    <label for="auto-update-toggle">Update Automatically (Weekly)</label>
+                    <label class="switch">
+                        <input type="checkbox" id="auto-update-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <button id="check-updates-btn" class="button secondary" style="margin-left: 15px;">Check for Updates</button>
+                <p id="update-status-message" class="status-message" style="margin-top: 5px; font-style: italic; color: var(--subtle-text-color);"></p>
+            </div>
+        </div>
+
+<!-- Portal Preferences -->
+                <div class="settings-section">
+                    <h3 class="settings-section-title">Preferences</h3>
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label for="port-setting">Application Port</label>
+                            <input type="number" id="port-setting" placeholder="e.g., 7001">
+                        </div>
+                        <div class="form-group">
+                            <label for="max-records-setting">Max Historical Records (per sensor)</label>
+                            <input type="number" id="max-records-setting" placeholder="e.g., 5000">
+                        </div>
+                        <button id="save-settings-btn" class="button">Save Portal Settings</button>
+                        <p id="settings-save-status" class="status-message"></p>
+                    </div>
+                </div>
+
+                <div class="settings-section" style="position: relative;">
+                    <h3 class="settings-section-title">System Reset</h3>
+                    <div class="settings-form">
+                         <p class="settings-note cautionary">Warning: These actions cannot be undone.</p>
+                        <div class="form-buttons">
+                            <button id="reset-gateways-btn" class="button stop">Remove All Gateways</button>
+                            <button id="reset-alerts-btn" class="button stop">Reset All Alerts</button>
+                            <button id="reset-color-groups-btn" class="button stop">Reset Color Groups</button>
+                            <button id="reset-names-btn" class="button stop">Reset Sensor Names</button>
+                        </div>
+                    </div>
+                    
+                    <a href="setup.html" class="setup-wizard-link">Run Setup Wizard Again</a>
+                    <a id="experimental-features-link" style="position: absolute; bottom: 15px; right: 15px;">Experimental Features</a>
+                </div>
+
+                <div class="log-container">
+                    <div class="log-header">
+                        <div class="log-title-group">
+                             <h3>System Log</h3>
+                             <div id="log-filter-container">
+                                <button class="log-filter-btn active" data-filter="all">All</button>
+                                <button class="log-filter-btn" data-filter="info">Info</button>
+                                <button class="log-filter-btn" data-filter="warn">Warn</button>
+                                <button class="log-filter-btn" data-filter="error">Error</button>
+                             </div>
+                        </div>
+                        <span id="log-toggle" class="log-toggle-arrow up">▶</span>
+                    </div>
+                    <div id="log-content" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 
+          Device Details View 
+          This view is now shared by Monnit Devices and External Devices.
+          JavaScript will show/hide the appropriate tabs based on context.
+        -->
+        <div id="device-details-view" class="hidden">
+             <header class="details-header">
+                <button id="back-to-dashboard-btn" class="button">◄ Back to Dashboard</button>
+                <h2 id="details-device-id">Device Details</h2>
+                 <button id="export-csv-btn" class="button icon-button" title="Export History to CSV">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                 </button>
+            </header>
+            <div class="details-tabs">
+                <!-- All possible tabs are listed here. JS will hide/show them. -->
+                <button id="details-tab-history" class="details-tab-link active" data-tab="history">History</button>
+                <!-- NEW TAB ADDED -->
+                <button id="details-tab-alert-history" class="details-tab-link" data-tab="alert-history">Alert History</button>
+                <button id="details-tab-details" class="details-tab-link" data-tab="details">Details</button>
+                <button id="details-tab-charts" class="details-tab-link" data-tab="charts">Charts</button>
+                <button id="details-tab-sensor-list" class="details-tab-link" data-tab="sensor-list">Sensor List</button>
+                <button id="details-tab-modbus-registers" class="details-tab-link" data-tab="modbus-registers">MODBUS Registers</button>
+                <button id="details-tab-settings" class="details-tab-link" data-tab="settings">Settings</button>
+            </div>
+            
+            <!-- Monnit/External History -->
+            <div id="history-content" class="details-tab-content active">
+                <!-- Date/Time pickers moved here to be part of the history tab -->
+                <div class="chart-controls">
+                    <div class="form-group">
+                        <!-- CHANGED: type="datetime-local" for better UI -->
+                        <label for="start-date">Start Date/Time:</label>
+                        <input type="datetime-local" id="start-date">
+                    </div>
+                    <div class="form-group">
+                        <!-- CHANGED: type="datetime-local" for better UI -->
+                        <label for="end-date">End Date/Time:</label>
+                        <input type="datetime-local" id="end-date">
+                    </div>
+                </div>
+                <p>Loading history...</p>
+                <!-- History table will be injected here by client.js -->
+            </div>
+
+            <!-- NEW CONTENT DIV ADDED -->
+            <div id="alert-history-content" class="details-tab-content">
+                <p>Loading alert history...</p>
+                <!-- Alert history table will be injected here by client.js -->
+            </div>
+            
+            <!-- External Device Details -->
+            <div id="details-content" class="details-tab-content">
+                <p>Loading details...</p>
+                <!-- External device details will be injected here by client.js -->
+            </div>
+
+            <!-- Monnit Device Chart -->
+            <div id="charts-content" class="details-tab-content">
+                <!-- Note: Date controls are now in the 'history' tab -->
+                <div class="chart-container">
+                     <p class="no-data-message">Loading chart data...</p>
+                </div>
+            </div>
+            
+            <!-- Monnit Gateway Sensor List -->
+            <div id="sensor-list-content" class="details-tab-content">
+                <!-- Content injected by client.js -->
+            </div>
+            
+            <!-- Monnit Gateway MODBUS Registers -->
+            <div id="modbus-registers-content" class="details-tab-content">
+                 <!-- Content injected by client.js -->
+            </div>
+            
+            <!-- Monnit Gateway Settings -->
+            <div id="settings-content" class="details-tab-content">
+                <p>Device-specific settings will be available here in a future update.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Find Gateway Modal -->
+    <div id="find-gateway-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Find & Add Gateway</h2>
+
+            <div class="find-method">
+                <h4>Scan Local Network</h4>
+                <p>This will perform a comprehensive scan of your local network(s) to find gateways. This may take several minutes.</p>
+                <button id="scan-network-btn" class="button">Scan Network</button>
+                <div class="scan-note">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    <span>Gateways must be on the same subnet to be discoverable.</span>
+                </div>
+                <div id="scan-status" class="status-message"></div>
+                <div id="scan-results-container"></div>
+            </div>
+
+            <hr>
+            
+            <div class="manual-add-toggle-container">
+                <a href="#" id="add-manually-toggle">Or Add Manually</a>
+            </div>
+            
+            <div id="manual-add-container" class="hidden">
+                 <div class="form-group">
+                    <label for="manual-add-type">Method</label>
+                    <select id="manual-add-type">
+                        <option value="ip">IP Address</option>
+                        <option value="mac">MAC Address</option>
+                    </select>
+                </div>
+                <div id="ip-input-container" class="find-method">
+                    <input type="text" id="ip-address-input" placeholder="e.g., 192.168.1.25">
+                    <button id="find-by-ip-btn" class="button">Add Gateway by IP</button>
+                </div>
+                <div id="mac-input-container" class="find-method hidden">
+                    <input type="text" id="mac-address-input" placeholder="e.g., 00:13:A2:00:12:34:56:78">
+                    <button id="find-by-mac-btn" class="button">Find & Add Gateway</button>
+                </div>
+            </div>
+
+
+            <p id="find-gateway-status" class="status-message"></p>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="confirm-modal-title">Confirmation</h3>
+            <p id="confirm-modal-message">Are you sure?</p>
+            <div class="modal-buttons">
+                <button id="confirm-ok-btn" class="button">OK</button>
+                <button id="confirm-cancel-btn" class="button stop">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Timeout Modal -->
+    <div id="timeout-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Gateway Timeout</h3>
+            <p id="timeout-modal-message">Connection to the gateway has timed out.</p>
+            <div class="modal-buttons">
+                <button id="timeout-retry-btn" class="button">Retry</button>
+                <button id="timeout-remove-btn" class="button stop">Remove Gateway</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inactive Sensors Modal -->
+    <div id="inactive-sensors-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 id="inactive-sensors-title">Inactive Sensors</h3>
+            <p>These sensors are registered on the gateway but have not reported data during this polling session.</p>
+            <div id="inactive-sensors-list"></div>
+        </div>
+    </div>
+    
+    <!-- Alert Config Modal -->
+    <div id="alert-config-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 id="alert-config-title">Configure Alert for Sensor</h3>
+            <div class="form-group">
+                <label for="alert-datum">Alert On (Datum)</label>
+                <select id="alert-datum">
+                    <option value="0">—</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="alert-condition">Alert Condition</label>
+                <select id="alert-condition">
+                    <option value="above">Value Above</option>
+                    <option value="below">Value Below</option>
+                    <option value="equal">Value Equals</option>
+                    <option value="not_equal">Value Not Equals</option>
+                </select>
+            </div>
+            <div class="form-group" id="alert-threshold-group">
+                <label for="alert-threshold">Threshold Value</label>
+                <input type="number" id="alert-threshold" step="any" placeholder="Enter value">
+                <select id="alert-threshold-discrete" class="hidden">
+                    <option value="0">—</option>
+                    <option value="1">—</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button id="save-alert-config-btn" class="button">Save</button>
+                <button id="cancel-alert-config-btn" class="button secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Info Modals -->
+    <div id="gateway-info-modal" class="modal hidden">
+        <div class="modal-content info-modal-content">
+            <span class="close-button">&times;</span>
+            <h3>Why Only One Active Gateway?</h3>
+            <p>This utility is designed to communicate with Monnit gateways using the MODBUS TCP protocol on port 502.</p>
+            <p>Due to the nature of this communication, the application can only maintain one active polling connection at a time. Activating one gateway for polling ensures that all communication is clearly directed to a single device, preventing data conflicts and connection errors.</p>
+            <div class="modal-buttons" style="justify-content: center;"><button class="button info-ok-btn">OK</button></div>
+        </div>
+    </div>
+
+    <div id="write-access-info-modal" class="modal hidden">
+        <div class="modal-content info-modal-content">
+            <span class="close-button">&times;</span>
+            <h3>How to Enable Write-Access</h3>
+            <p>The Ethernet Gateway 4 offers a local configuration page through which you can modify gateway configurations locally. The page is accessible through a web browser by visiting the gateway’s IP address. The Interface is disabled by default, so it must first be activated to access it.</p>
+            <h4>Activate the HTTP Interface (local configuration page)</h4>
+            <ul>
+                <li>Power the gateway off.</li>
+                <li>Press and hold the physical Utility button on the gateway.</li>
+                <li>Power the gateway on by holding the Utility button down.</li>
+                <li>When all three LED’s illuminate and remain solid red (about 5 seconds), release the button.</li>
+                <li>The gateway’s HTTP Interface will be active for two minutes.</li>
+                <li>If you correctly activate the HTTP Interface, you can see the local configuration page when visiting the gateway’s IP address (preceded by http://) in a web browser from a computer on the same local network.</li>
+            </ul>
+             <p><b>Note:</b> Although the interface is active for two minutes, you can set that to "Always Available" in the LAN settings to keep the gateway in Write-Access.</p>
+            <div class="modal-buttons" style="justify-content: center;"><button class="button info-ok-btn">OK</button></div>
+        </div>
+    </div>
+
+    <div id="modbus-disabled-info-modal" class="modal hidden">
+        <div class="modal-content info-modal-content">
+            <span class="close-button">&times;</span>
+            <h3>MODBUS TCP Interface Disabled</h3>
+            <p>This gateway does not have its MODBUS TCP Interface active on port 502, which is required for this utility to poll its sensors.</p>
+            <p>If the gateway is not in Read-Only mode, you can enable this feature under <b>Gateway Settings > (Select this Gateway) > Modbus TCP</b> tab.</p>
+<div><button class="button info-ok-btn">OK</button></div>
+        </div>
+    </div>
+
+    <div id="modbus-disabled-blocking-modal" class="modal hidden">
+        <div class="modal-content info-modal-content">
+            <span class="close-button">&times;</span>
+            <h3>MODBUS TCP Interface Disabled</h3>
+            <p>This gateway does not have its MODBUS TCP Interface active on port 502, which is required to poll its sensors.</p>
+            <p>If the gateway is not in Read-Only mode, you can attempt to enable it automatically, or enable it manually under <b>Gateway Settings > (Select this Gateway) > Modbus TCP</b> tab.</p>
+            <div class="modal-buttons" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button id="modbus-blocking-enable-btn" class="button">Attempt to Enable</button>
+                <button class="button secondary-btn info-ok-btn">OK</button>
+            </div>
+            <p id="modbus-blocking-status" class="status-message hidden" style="margin-top: 12px;"></p>
+        </div>
+    </div>
+    
+    <div id="gateway-locked-info-modal" class="modal hidden">
+        <div class="modal-content info-modal-content">
+            <span class="close-button">&times;</span>
+            <h3>Unlocking a Gateway</h3>
+            <p>In order for a gateway to operate on a strictly local network without iMonnit, you must unlock it if it wasn’t purchased already unlocked. Gateway Unlock Codes can be purchased from Monnit sales. If your gateway is not unlocked, it must communicate with iMonnit on port 3000 to receive the unlock command.</p>
+            <h4>Using an Ethernet Gateway 4 without iMonnit Online</h4>
+            <p>The Gateway's Default Interface can be disabled in Gateway Settings > Default Server > Disable.</p>
+            <p>The ALTA Ethernet Gateway 4 offers Modbus TCP and SNMP Interfaces which you can poll to receive sensor data. These interfaces are disabled by default but can be enabled through iMonnit Software or the gateway’s local configuration page (HTTP Interface).</p>
+            <div class="modal-buttons" style="justify-content: center;"><button class="button info-ok-btn">OK</button></div>
+        </div>
+    </div>
+
+     <div id="status-problem-modal" class="modal hidden">
+        <div class="modal-content info-modal-content">
+            <span class="close-button">&times;</span>
+            <h3>Inactive Systems Detected</h3>
+            <p id="status-problem-message"></p>
+            <div class="modal-buttons" style="justify-content: center;"><button class="button info-ok-btn">OK</button></div>
+        </div>
+    </div>
+
+    <div id="repeat-alert-info-modal" class="modal hidden">
+        <div class="modal-content info-modal-content">
+            <span class="close-button">&times;</span>
+            <h3>About Repeat Alerts</h3>
+            <p>You can set an interval in minutes for how often an alert notification should be re-sent if a sensor's condition remains in an alert state.</p>
+            <ul>
+                <li>Enter a value in minutes (1-1440).</li>
+                <li>The maximum value is 1440 minutes (24 hours).</li>
+                <li>Enter 0 to disable repeat alerts. Notifications will only be sent once when the alert is first triggered.</li>
+            </ul>
+            <div class="modal-buttons" style="justify-content: center;"><button class="button info-ok-btn">OK</button></div>
+        </div>
+    </div>
+
+    <div id="default-server-info-modal" class="modal hidden">
+        <div class="modal-content info-modal-content">
+            <span class="close-button">&times;</span>
+            <h3>About the Default Server Interface</h3>
+            <p>For the gateway to continue to receive sensor data and respond to polling on the Modbus TCP/SNMP Interface while the gateway is not sending data to Monnit Software, the Default Interface must be disabled. You may find that you’re not receiving sensor data or that your gateway stops responding to polling on the Modbus TCP/SNMP Interface intermittently if there is no connection to Monnit Software, but you haven’t disabled the Default Interface.</p>
+            <p>You will need to unlock your gateway to disable the Default Server Interface. If the gateway is not unlocked, you won’t see the option to disable this interface. If this interface is left active while operating on a private network and the gateway can’t reach a Monnit server, the gateway will continually reach out to iMonnit unsuccessfully, and the sensor network will go inactive. This will be demonstrated by sensor data not being updated in the device’s sensor registers, and the sensor LED (top LED) will go dark.</p>
+            <p>Once the gateway is unlocked, you can disable the Default Server Interface by accessing the gateway’s local configuration page (HTTP Interface) through a browser, clicking the Data Interfaces tab, and selecting Default Server Configuration, turning it off, and clicking Save Changes. When the gateway reboots, it will no longer attempt to report data to Monnit Software.</p>
+            <div class="modal-buttons" style="justify-content: center;"><button class="button info-ok-btn">OK</button></div>
+        </div>
+    </div>
+
+    <div id="info-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="info-modal-title">Information</h3>
+            <p id="info-modal-message"></p>
+            <div class="modal-buttons" style="justify-content: center;">
+                <button id="info-ok-btn" class="button">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scan Progress Modal -->
+    <div id="scan-progress-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Scanning Network...</h3>
+            <div class="spinner"></div>
+            <p id="scan-current-status" class="status-message">Starting scan...</p>
+            <div id="scan-progress-log"></div>
+            <div class="modal-buttons">
+                <button id="cancel-scan-btn" class="button stop">Cancel Scan</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Reboot Modal -->
+    <div id="reboot-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="reboot-modal-title">Applying Settings...</h3>
+            <div class="spinner"></div>
+            <p id="reboot-modal-message">The gateway is rebooting to apply the new settings. This may take up to 30 seconds. Please wait...</p>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+<script>
+    const isMacOs = navigator.platform.toUpperCase().indexOf('MAC')>=0;
+    const macUpdateContainer = document.querySelector('#auto-update-settings .form-group-inline');
+    if (!isMacOs && macUpdateContainer) {
+        macUpdateContainer.style.display = 'none';
+    }
+</script>
+    <script src="sensor-parser.js"></script>
+    <script src="js/modbus-register-map.js"></script>
+    <script src="js/client-core.js"></script>
+    <script src="js/client-render.js"></script>
+    <script src="js/client-socket.js"></script>
+    <script src="js/client-events.js"></script>
+    
+    <!-- NEW SCRIPT ADDED FOR TOGGLE LOGIC -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleLink = document.getElementById('experimental-features-link');
+            const externalDevicesTab = document.getElementById('external-devices-tab');
+            
+            // Check local storage for saved state
+            const experimentalEnabled = localStorage.getItem('experimentalFeaturesEnabled') === 'true';
+            
+            if (experimentalEnabled) {
+                externalDevicesTab.classList.remove('hidden');
+            }
+            
+            toggleLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                const isCurrentlyHidden = externalDevicesTab.classList.contains('hidden');
+                
+                if (isCurrentlyHidden) {
+                    externalDevicesTab.classList.remove('hidden');
+                    localStorage.setItem('experimentalFeaturesEnabled', 'true');
+                } else {
+                    externalDevicesTab.classList.add('hidden');
+                    localStorage.setItem('experimentalFeaturesEnabled', 'false');
+                    
+                    // If they are hiding it while on the external devices tab, switch back to Monnit Devices
+                    if (externalDevicesTab.classList.contains('active')) {
+                        document.querySelector('.tab-link[data-tab="devices-content"]').click();
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

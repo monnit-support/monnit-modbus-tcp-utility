@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Setup - Monnit MODBUS TCP Utility</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
+    <link rel="icon" href="favicon.ico">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="setup-page">
+    <div class="container">
+        <header class="setup-page-header">
+             <div class="setup-header-brand">
+                <img src="logo.png" alt="Logo" width="50" height="50">
+                <h1 id="main-title">Initial Setup Wizard</h1>
+            </div>
+            <button type="button" id="skip-setup-header-btn" class="button secondary">Skip Setup</button>
+        </header>
+
+        <div id="setup-wizard">
+            <!-- Step 1: Scan Network (New First Step) -->
+            <div id="step-1-scan" class="setup-step active">
+                <h2>Find Your Gateway</h2>
+                <p>To get started, click Scan Local Network.</p>
+                
+                <div class="find-method">
+                    <button id="scan-network-btn" class="button">Scan Local Network</button>
+                     <div class="scan-note">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; flex-shrink: 0;"></svg>
+                        <span>Gateways must be on the same subnet to be discoverable.</span>
+                    </div>
+                </div>
+
+                <div id="scan-status" class="status-message"></div>
+                <div id="scan-results-container">
+                    <!-- Scan results will be populated here -->
+                </div>
+                 <p id="select-gateway-prompt" class="status-message hidden">Please select a gateway from the list above to begin configuration.</p>
+                 
+                <!-- Manual Add Section -->
+                <div id="manual-add-section" style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                    <div id="manual-add-prompt" class="hidden">
+                        <p class="status-message">If your gateway was not found, you can add it manually using its IP Address or MAC Address.</p>
+                        <div class="form-group-inline">
+                            <input type="text" id="manual-input" placeholder="Enter IP or MAC Address">
+                            <button id="add-manual-btn" class="button secondary">Add Manually</button>
+                        </div>
+                        
+                        <!-- Moved Skip Link Here -->
+                        <div style="margin-top: 15px; text-align: center;">
+                            <span style="font-size: 0.9em; color: var(--subtle-text-color);">Or </span>
+                            <!-- Renamed ID to 'trigger-skip-modal' to avoid CSS conflicts causing absolute positioning -->
+                            <a href="#" id="trigger-skip-modal" style="font-size: 0.9em; color: var(--subtle-text-color); text-decoration: underline; cursor: pointer;">skip setup for now</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Analyzing Gateway -->
+            <div id="step-2-analyze" class="setup-step">
+                <h2>Analyzing Gateway...</h2>
+                <div class="spinner-container" style="display: flex; justify-content: center; padding: 20px;">
+                    <div class="spinner"></div>
+                </div>
+                <p id="analysis-status" class="status-message">Checking gateway status and configuration...</p>
+            </div>
+
+            <!-- DYNAMIC STEPS START HERE -->
+
+            <!-- Summary Step: All Good (Private) -->
+            <div id="step-summary-perfect-private" class="setup-step">
+                <h2>Configuration Complete!</h2>
+                <div class="info-box success">
+                    <p><strong>This gateway is perfectly configured for Private Mode.</strong></p>
+                    <ul>
+                        <li><span class="check-mark">✔</span>Gateway is Unlocked.</li>
+                        <li><span class="check-mark">✔</span>Default Server Interface is Disabled.</li>
+                        <li><span class="check-mark">✔</span>MODBUS TCP Interface is Enabled.</li>
+                    </ul>
+                </div>
+                <p>Click "Finish" to complete the setup and go to the dashboard.</p>
+                <div class="selection-group">
+                    <button id="finish-private-btn" class="button">Finish</button>
+                </div>
+            </div>
+
+             <!-- Summary Step: All Good (Hybrid) -->
+            <div id="step-summary-perfect-hybrid" class="setup-step">
+                <h2>Configuration Complete!</h2>
+                 <div class="info-box success">
+                    <p><strong>This gateway is perfectly configured for Hybrid Mode.</strong></p>
+                     <ul>
+                        <li><span class="check-mark">✔</span>Default Server is connected to iMonnit.</li>
+                        <li><span class="check-mark">✔</span>MODBUS TCP Interface is Enabled.</li>
+                    </ul>
+                </div>
+                 <p>Click "Finish" to complete the setup and go to the dashboard.</p>
+                 <div class="selection-group">
+                    <button id="finish-hybrid-btn" class="button">Finish</button>
+                </div>
+            </div>
+
+            <!-- Action Step: Enable MODBUS (from scan) -->
+            <div id="step-action-enable-modbus" class="setup-step">
+                <h2>Attempting to Enable MODBUS TCP...</h2>
+                <div class="spinner-container" style="display: flex; justify-content: center; padding: 20px;">
+                    <div class="spinner"></div>
+                </div>
+                <p class="status-message">Sending command to the gateway. This process can take up to 2 minutes as the gateway may reboot. Please wait...</p>
+                <p id="enable-modbus-status" class="status-message"></p>
+            </div>
+
+             <!-- Summary Step: Private mode, but Default Server needs disabling -->
+            <div id="step-summary-private-needs-disable" class="setup-step">
+                 <h2>Action Required</h2>
+                 <div class="info-box">
+                    <p>This gateway is <strong>Unlocked</strong> and has <strong>Write-Access</strong>, which is great for Private Mode.</p>
+                    <p>However, the <strong>Default Server Interface is still Enabled.</strong> For reliable operation on a private network, this should be disabled to prevent the gateway from trying to contact iMonnit.</p>
+                </div>
+                <p>Click "Next" and we will automatically disable it for you.</p>
+            </div>
+            
+            <!-- Action Step: Disable Default Server -->
+            <div id="step-action-disable-server" class="setup-step">
+                 <h2>Disabling Default Server...</h2>
+                <div class="spinner-container" style="display: flex; justify-content: center; padding: 20px;">
+                    <div class="spinner"></div>
+                </div>
+                <p class="status-message">Sending command to the gateway. The gateway may reboot.</p>
+            </div>
+
+
+            <!-- Terminal Step: Needs Unlock -->
+            <div id="step-needs-unlock" class="setup-step">
+                <h2>Action Required: Gateway Unlock</h2>
+                <div class="info-box warning">
+                    <p>To operate in a private network (disconnected from iMonnit), your gateway <strong>must be unlocked</strong>. This gateway is currently locked and in Read-Only mode.</p>
+                    <p>Unlock codes are purchased from Monnit. If your gateway is not unlocked, it must first connect to iMonnit to receive the unlock command. For details, see <a href="https://support.monnit.com/article/417-do-i-need-an-unlock-code" target="_blank">Do I Need an Unlock Code?</a> or contact support@monnit.com.</p>
+                </div>
+                <p>Please unlock the gateway through your iMonnit account and then restart this setup wizard.</p>
+            </div>
+
+            <!-- Terminal Step: Hybrid Mode with iMonnit Error -->
+            <div id="step-summary-hybrid-error" class="setup-step">
+                <h2>Configuration Notice</h2>
+                <div class="info-box warning">
+                    <p><strong>iMonnit Connection Issue Detected</strong></p>
+                    <p>This gateway's "Default Server" status is <strong>"On and Server Error"</strong>. This means it is trying to connect to iMonnit but is failing.</p>
+                    <ul>
+                        <li>This utility can still poll sensor data via MODBUS TCP.</li>
+                        <li>However, <strong>all sensor configuration</strong> (heartbeats, awareness, etc.) MUST be done through your iMonnit Online account.</li>
+                        <li>You will not be able to configure sensors until this connection issue is resolved.</li>
+                    </ul>
+                </div>
+                <p>You can click "Finish" to add the gateway for monitoring, but please check your network's firewall rules (allow outbound TCP on Port 3000) to restore full functionality.</p>
+                 <div class="selection-group">
+                    <button id="finish-anyway-btn" class="button">Finish Setup</button>
+                </div>
+            </div>
+
+            <!-- Final Step -->
+            <div id="step-finish" class="setup-step">
+                <h2>Setup Complete!</h2>
+                <p>The gateway has been successfully added and configured.</p>
+                <div class="selection-group">
+                    <button id="finish-setup-btn" class="button">Go to Dashboard</button>
+                </div>
+            </div>
+            <!-- DYNAMIC STEPS END HERE -->
+
+            <div class="setup-navigation">
+                <button id="prev-btn" class="button secondary">Previous</button>
+                <button id="next-btn" class="button">Next</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <div id="scan-progress-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Scanning Network...</h3>
+            <div class="spinner"></div>
+            <p id="scan-current-status" class="status-message">Starting scan...</p>
+            <div id="scan-progress-log"></div>
+            <div class="modal-buttons">
+                <button id="cancel-scan-btn" class="button stop">Cancel Scan</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="read-only-confirm-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Read-Only Gateway</h3>
+            <p>This gateway is in Read-Only mode. It can be added for monitoring, but it cannot be configured by this utility until Write-Access is enabled.</p>
+             <div class="readonly-banner-inline" style="justify-content: center;">
+                <span>Click for instructions on how to enable Write-Access.</span>
+                <button class="info-icon-btn write-access-info-trigger" title="How to Enable Write-Access">i</button>
+            </div>
+            <div class="modal-buttons">
+                <button id="read-only-continue-btn" class="button">Continue Anyway</button>
+                <button id="read-only-cancel-btn" class="button stop">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modbus-readonly-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>MODBUS TCP Disabled</h3>
+            <p>This gateway's MODBUS TCP Interface is disabled, and it is in <strong>Read-Only</strong> mode.</p>
+            <p>To enable the MODBUS interface, you must first enable Write-Access on the gateway itself.</p>
+             <div class="readonly-banner-inline" style="justify-content: center;">
+                <span>Click for instructions.</span>
+                <button class="info-icon-btn write-access-info-trigger" title="How to Enable Write-Access">i</button>
+            </div>
+            <p>You can add the gateway now, but you will need to enable MODBUS later in the Gateway Settings tab to poll for sensor data.</p>
+            <div class="modal-buttons">
+                <button id="modbus-readonly-add-btn" class="button">Add Anyway</button>
+                <button id="modbus-readonly-cancel-btn" class="button stop">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modbus-writable-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Enable MODBUS TCP?</h3>
+            <p>This gateway's MODBUS TCP Interface is disabled, but <strong>Write-Access</strong> is available.</p>
+            <p>Would you like this utility to attempt to automatically enable it for you? The gateway will reboot if successful.</p>
+            <div class="modal-buttons">
+                <button id="modbus-writable-enable-btn" class="button">Yes, Enable MODBUS</button>
+                <button id="modbus-writable-add-btn" class="button secondary">No, Add Anyway</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="server-error-modal" class="modal hidden">
+        <div class="modal-content info-modal-content">
+            <span class="close-button">&times;</span>
+            <h3>Gateway Connection Error</h3>
+            <p>This gateway has a "Default Server" status of <strong>"On and Server Error"</strong>, indicating it cannot connect to Monnit's servers. Please review the following based on your intended use:</p>
+            
+            <h4>Using with iMonnit Online</h4>
+            <ul>
+                <li>Ensure the gateway is registered to an active iMonnit Online account.</li>
+                <li>Verify your network firewall allows outbound traffic on <strong>TCP Port 3000</strong>.</li>
+                <li>Confirm your network's DNS can resolve the address <strong>sensorsgateway.com</strong>.</li>
+            </ul>
+
+            <h4>Using on a Private Network (without iMonnit)</h4>
+            <p>To use this gateway on a private, local-only network, you must first purchase an <strong>Unlock Code</strong> from Monnit. Once the gateway is unlocked, the "Default Server" interface can be disabled to resolve this error.</p>
+            
+            <p>Please resolve the connection issue and restart the setup wizard.</p>
+
+            <div class="modal-buttons" style="justify-content: center;"><button class="button info-ok-btn">OK</button></div>
+        </div>
+    </div>
+    
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="confirm-modal-title">Confirmation</h3>
+            <p id="confirm-modal-message">Are you sure?</p>
+            <div class="modal-buttons">
+                <button id="confirm-ok-btn" class="button">OK</button>
+                <button id="confirm-cancel-btn" class="button stop">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Skip Setup Confirmation Modal -->
+    <div id="skip-setup-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Skip Gateway Setup?</h3>
+            <p>Are you sure you want to skip adding a gateway for now?</p>
+            <p>You will be taken to the main dashboard where you can:</p>
+            <ul style="text-align: left; margin-bottom: 20px;">
+                <li>Configure "Receive" plugins (SNMP Trap, LoRaWAN, etc.) to add external devices.</li>
+                <li>Add a Monnit Gateway manually later from the Settings tab.</li>
+            </ul>
+            <div class="modal-buttons">
+                <button id="skip-setup-confirm-btn" class="button">Yes, Skip Setup</button>
+                <button id="skip-setup-cancel-btn" class="button stop">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="write-access-info-modal" class="modal hidden">
+        <div class="modal-content info-modal-content">
+            <span class="close-button">&times;</span>
+            <h3>How to Enable Write-Access</h3>
+            <p>The Ethernet Gateway 4 offers a local configuration page through which you can modify gateway configurations locally. The page is accessible through a web browser by visiting the gateway’s IP address. The Interface is disabled by default, so it must first be activated to access it.</p>
+            <h4>Activate the HTTP Interface (local configuration page)</h4>
+            <ul>
+                <li>Power the gateway off.</li>
+                <li>Press and hold the physical Utility button on the gateway.</li>
+                <li>Power the gateway on by holding the Utility button down.</li>
+                <li>When all three LED’s illuminate and remain solid red (about 5 seconds), release the button.</li>
+                <li>The gateway’s HTTP Interface will be active for two minutes.</li>
+                <li>If you correctly activate the HTTP Interface, you can see the local configuration page when visiting the gateway’s IP address (preceded by http://) in a web browser from a computer on the same local network.</li>
+            </ul>
+             <p><b>Note:</b> Although the interface is active for two minutes, you can set that to "Always Available" in the LAN settings to keep the gateway in Write-Access.</p>
+            <div class="modal-buttons" style="justify-content: center;"><button class="button info-ok-btn">OK</button></div>
+        </div>
+    </div>
+
+    <!-- FIX: Removed socket.io script script because it's now handled by Electron bridge -->
+    <script src="setup.js"></script>
+</body>
+</html>

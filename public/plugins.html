@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plugins – Monnit MODBUS TCP Utility</title>
+    <link rel="icon" href="favicon.ico">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="plugins-page"> <!-- Added class for log styling -->
+<div class="container">
+    <header>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <img src="logo.png" alt="Logo" width="50" height="50">
+            <h1>Plugins Manager</h1>
+        </div>
+        <!-- FIX: Changed href="/" to "index.html" for Electron compatibility -->
+        <a href="index.html" class="button secondary">← Back to Dashboard</a>
+    </header>
+
+    <div id="plugins-status-bar" class="status-header">
+        <h4>Plugin Status</h4>
+    </div>
+    <div id="plugins-status">
+        <div>Enabled: <span id="plugins-enabled-count">0</span></div>
+        <div>Latest Log: <span id="plugins-latest-log">-</span></div>
+    </div>
+
+    <!-- New Plugin Mode Toggle - Moved here and simplified -->
+    <div class="plugin-mode-toggle">
+        <button class="plugin-mode-btn active" data-mode="broadcast">
+            Broadcast (Data Out)
+        </button>
+        <button class="plugin-mode-btn" data-mode="receive">
+            Receive (Data In)
+        </button>
+    </div>
+
+    <!-- Broadcast (Data-Out) Plugins -->
+    <div id="broadcast-plugin-container" class="plugin-group">
+        <div class="tabs" id="broadcast-tabs">
+            <button class="tab-link active" data-tab="webhooks">HTTP Webhooks</button>
+            <button class="tab-link" data-tab="mqtt">MQTT</button>
+            <button class="tab-link" data-tab="bacnet">BACnet</button>
+        </div>
+
+        <!-- Webhooks Panel -->
+        <div id="webhooks" class="tab-content active" data-mode="broadcast">
+            <div class="settings-form">
+                    <div class="form-group-inline">
+                        <label for="wh-enable-toggle">Enable Webhooks</label>
+                        <label class="switch">
+                            <input type="checkbox" id="wh-enable-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="wh-base-url">Base URL (Endpoint)</label>
+                        <input type="text" id="wh-base-url" placeholder="https://example.com/webhook">
+                    </div>
+                    <div class="form-group-inline">
+                        <label for="wh-auth-toggle">Enable Basic Authentication</label>
+                        <label class="switch">
+                            <input type="checkbox" id="wh-auth-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div id="wh-auth-fields" class="hidden">
+                        <div class="form-group">
+                            <label for="wh-username">Username</label>
+                            <input type="text" id="wh-username">
+                        </div>
+                        <div class="form-group">
+                            <label for="wh-password">Password</label>
+                            <input type="password" id="wh-password">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <span id="wh-status" class="status-message">Not configured</span>
+                    </div>
+
+                    <!-- REPOSITIONED: Save Button Above Log -->
+                    <div class="form-actions" style="margin-bottom: 20px;">
+                        <button id="wh-save-btn" class="button">Save Configuration</button>
+                        <span id="wh-save-status" class="status-message"></span>
+                    </div>
+
+                    <div class="log-container">
+    <div class="log-header plugin-log-header" data-plugin="webhook">
+        <div class="log-title-group">
+            <h3>Webhook Log</h3>
+        </div>
+        <span class="log-toggle-arrow">▶</span>
+    </div>
+    <div class="plugin-log-content" data-plugin="webhook" style="display: none;"></div>
+</div>
+            </div>
+        </div>
+
+        <!-- MQTT Panel -->
+        <div id="mqtt" class="tab-content" data-mode="broadcast">
+            <div class="settings-form">
+
+                    <p class="settings-note info">Data is compiled as JSON and published via MQTT when received.</p>
+                    <div class="form-group-inline">
+                        <label for="mqtt-enable-toggle">Enable MQTT</label>
+                        <label class="switch">
+                            <input type="checkbox" id="mqtt-enable-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="mqtt-host">Host</label>
+                        <input type="text" id="mqtt-host" placeholder="mqtt.example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="mqtt-port">Port</label>
+                        <input type="number" id="mqtt-port" value="1883">
+                    </div>
+                    <div class="form-group">
+                        <label for="mqtt-client-id">Client ID</label>
+                        <input type="text" id="mqtt-client-id" placeholder="monnit-utility (auto-generates if blank)">
+                    </div>
+                    <div class="form-group">
+                        <label for="mqtt-topic">Topic</label>
+                        <input type="text" id="mqtt-topic" placeholder="monnit/sensors">
+                        <small>To subscribe to all sub-topics, add `/#` (e.g., `monnit/sensors/#`)</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="mqtt-username">Username</label>
+                        <input type="text" id="mqtt-username">
+                    </div>
+                    <div class="form-group">
+                        <label for="mqtt-password">Password</label>
+                        <input type="password" id="mqtt-password">
+                    </div>
+                    <div class="form-group">
+                        <label for="mqtt-protocol">Transport</label>
+                        <select id="mqtt-protocol">
+                            <option value="mqtt">Standard (mqtt://)</option>
+                            <option value="websocket">WebSocket (ws://)</option>
+                        </select>
+                    </div>
+                    <div class="form-group-inline">
+                        <label for="mqtt-tls">Use TLS (mqtts:// or wss://)</label>
+                        <label class="switch">
+                            <input type="checkbox" id="mqtt-tls">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <span id="mqtt-status" class="status-message">Not configured</span>
+                    </div>
+
+                    <!-- REPOSITIONED: Save Button Above Log -->
+                    <div class="form-actions" style="margin-bottom: 20px;">
+                        <button id="mqtt-save-btn" class="button">Save Configuration</button>
+                        <span id="mqtt-save-status" class="status-message"></span>
+                    </div>
+
+                    
+<!-- MQTT Log -->
+<div class="log-container">
+    <div class="log-header plugin-log-header" data-plugin="mqtt">
+        <div class="log-title-group">
+            <h3>MQTT Log</h3>
+        </div>
+        <span class="log-toggle-arrow">▶</span>
+    </div>
+    <div class="plugin-log-content" data-plugin="mqtt" style="display: none;"></div>
+</div>
+
+            </div>
+        </div>
+
+        <!-- BACnet Panel -->
+        <div id="bacnet" class="tab-content" data-mode="broadcast">
+            <div class="settings-form">
+                    <p class="settings-note info">Exposes all sensors as BACnet "Analog Value" (AV) objects on the local network.</p>
+                    <div class="form-group-inline">
+                        <label for="bacnet-enable-toggle">Enable BACnet</label>
+                        <label class="switch">
+                            <input type="checkbox" id="bacnet-enable-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="bacnet-device-name">Device Name</label>
+                        <input type="text" id="bacnet-device-name" placeholder="Monnit Utility">
+                        <small>This is the name your device will broadcast on the BACnet network.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="bacnet-port">Port</label>
+                        <input type="number" id="bacnet-port" value="47808">
+                        <small>Default BACnet/IP port. Only change this if you have a specific reason.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="bacnet-node-id">Device Instance (ID)</label>
+                        <input type="number" id="bacnet-node-id" value="1200">
+                        <small>A unique ID for this device on your BACnet network (1-4194302).</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <span id="bacnet-status" class="status-message">Not configured</span>
+                    </div>
+
+                    <!-- REPOSITIONED: Save Button Above Log -->
+                    <div class="form-actions" style="margin-bottom: 20px;">
+                        <button id="bacnet-save-btn" class="button">Save Configuration</button>
+                        <span id="bacnet-save-status" class="status-message"></span>
+                    </div>
+
+                    <!-- BACnet Log -->
+<div class="log-container">
+    <div class="log-header plugin-log-header" data-plugin="bacnet">
+        <div class="log-title-group">
+            <h3>BACnet Log</h3>
+        </div>
+        <span class="log-toggle-arrow">▶</span>
+    </div>
+    <div class="plugin-log-content" data-plugin="bacnet" style="display: none;"></div>
+</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receive (Data-In) Plugins -->
+    <div id="receive-plugin-container" class="plugin-group hidden">
+        <div class="tabs" id="receive-tabs">
+            <button class="tab-link active" data-tab="snmp-trap">SNMP Trap Listener</button>
+            <button class="tab-link" data-tab="mqtt-subscriber">MQTT Subscriber</button>
+            <button class="tab-link" data-tab="bacnet-subscriber">BACnet Subscriber</button>
+            <button class="tab-link" data-tab="lorawan">LoRaWAN</button>
+            <button class="tab-link" data-tab="modbus-poller">MODBUS Poller</button>
+        </div>
+
+        <!-- SNMP Trap Panel -->
+        <div id="snmp-trap" class="tab-content active" data-mode="receive">
+            <div class="settings-form">
+                <p class="settings-note info">Listen for SNMP traps (alerts) sent from other network devices like a UPS, router, or server.</p>
+                <div class="form-group-inline">
+                    <label for="snmptrap-enable-toggle">Enable SNMP Trap Listener</label>
+                    <label class="switch">
+                        <input type="checkbox" id="snmptrap-enable-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="snmptrap-port">Port</label>
+                    <input type="number" id="snmptrap-port" value="162">
+                    <small>Default SNMP Trap port. Ensure no other service is using this port.</small>
+                </div>
+                <div class="form-group">
+                    <label for="snmptrap-community">Community String</label>
+                    <input type="text" id="snmptrap-community" value="public">
+                    <small>The community string your devices will use to send traps.</small>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <span id="snmptrap-status" class="status-message">Not configured</span>
+                </div>
+
+                <!-- REPOSITIONED: Save Button Above Log -->
+                <div class="form-actions" style="margin-bottom: 20px;">
+                    <button id="snmptrap-save-btn" class="button">Save Configuration</button>
+                    <span id="snmptrap-save-status" class="status-message"></span>
+                </div>
+
+<!-- SNMP Trap Log -->
+<div class="log-container">
+    <div class="log-header plugin-log-header" data-plugin="snmptrap">
+        <div class="log-title-group">
+            <h3>SNMP Trap Log</h3>
+        </div>
+        <span class="log-toggle-arrow">▶</span>
+    </div>
+    <div class="plugin-log-content" data-plugin="snmptrap" style="display: none;"></div>
+</div>
+            </div>
+        </div>
+
+        <!-- MQTT Subscriber Panel -->
+        <div id="mqtt-subscriber" class="tab-content" data-mode="receive">
+            <div class="settings-form">
+                <p class="settings-note info">Subscribes to an MQTT topic and ingests matching messages as external devices.</p>
+                <div class="form-group-inline">
+                    <label for="mqttsub-enable-toggle">Enable MQTT Subscriber</label>
+                    <label class="switch">
+                        <input type="checkbox" id="mqttsub-enable-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="mqttsub-host">Host</label>
+                    <input type="text" id="mqttsub-host" placeholder="mqtt.example.com">
+                </div>
+                <div class="form-group">
+                    <label for="mqttsub-port">Port</label>
+                    <input type="number" id="mqttsub-port" value="1883">
+                </div>
+                <div class="form-group">
+                    <label for="mqttsub-topic">Topic</label>
+                    <input type="text" id="mqttsub-topic" placeholder="external/+/data">
+                    <small>Use wildcards. To subscribe to all sub-topics, end with `/#` (e.g., `monnit/sensors/#`)</small>
+                </div>
+                <div class="form-group">
+                    <label for="mqttsub-username">Username</label>
+                    <input type="text" id="mqttsub-username">
+                </div>
+                <div class="form-group">
+                    <label for="mqttsub-password">Password</label>
+                    <input type="password" id="mqttsub-password">
+                </div>
+                <div class="form-group">
+                    <label for="mqttsub-protocol">Transport</label>
+                    <select id="mqttsub-protocol">
+                        <option value="mqtt">Standard (mqtt://)</option>
+                        <option value="websocket">WebSocket (ws://)</option>
+                    </select>
+                </div>
+                <div class="form-group-inline">
+                    <label for="mqttsub-tls">Use TLS (mqtts:// or wss://)</label>
+                    <label class="switch">
+                        <input type="checkbox" id="mqttsub-tls">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <span id="mqttsub-status" class="status-message">Not configured</span>
+                </div>
+
+                <!-- REPOSITIONED: Save Button Above Log -->
+                <div class="form-actions" style="margin-bottom: 20px;">
+                    <button id="mqttsub-save-btn" class="button">Save Configuration</button>
+                    <span id="mqttsub-save-status" class="status-message"></span>
+                </div>
+
+<!-- MQTT Subscriber Log -->
+<div class="log-container">
+    <div class="log-header plugin-log-header" data-plugin="mqttsub">
+        <div class="log-title-group">
+            <h3>MQTT Subscriber Log</h3>
+        </div>
+        <span class="log-toggle-arrow">▶</span>
+    </div>
+    <div class="plugin-log-content" data-plugin="mqttsub" style="display: none;"></div>
+</div>
+            </div>
+        </div>
+
+        <!-- BACnet Subscriber Panel -->
+        <div id="bacnet-subscriber" class="tab-content" data-mode="receive">
+            <div class="settings-form">
+                <p class="settings-note info">Listens for BACnet "WhoIs" broadcasts to discover other devices on the network.</p>
+                <div class="form-group-inline">
+                    <label for="bacnetsub-enable-toggle">Enable BACnet Subscriber</label>
+                    <label class="switch">
+                        <input type="checkbox" id="bacnetsub-enable-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="bacnetsub-port">Port</label>
+                    <input type="number" id="bacnetsub-port" value="47808">
+                    <small>Default BACnet/IP port. Ensure this matches your network.</small>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <span id="bacnetsub-status" class="status-message">Not configured</span>
+                </div>
+
+                <!-- REPOSITIONED: Save Button Above Log -->
+                <div class="form-actions" style="margin-bottom: 20px;">
+                    <button id="bacnetsub-save-btn" class="button">Save Configuration</button>
+                    <span id="bacnetsub-save-status" class="status-message"></span>
+                </div>
+
+<!-- BACnet Subscriber Log -->
+<div class="log-container">
+    <div class="log-header plugin-log-header" data-plugin="bacnetsub">
+        <div class="log-title-group">
+            <h3>BACnet Subscriber Log</h3>
+        </div>
+        <span class="log-toggle-arrow">▶</span>
+    </div>
+    <div class="plugin-log-content" data-plugin="bacnetsub" style="display: none;"></div>
+</div>
+            </div>
+        </div>
+
+        <!-- LoRaWAN Panel -->
+        <div id="lorawan" class="tab-content" data-mode="receive">
+            <div class="settings-form">
+                <p class="settings-note info">Listens for LoRaWAN packets from a Semtech UDP Packet Forwarder.</p>
+                <div class="form-group-inline">
+                    <label for="lorawan-enable-toggle">Enable LoRaWAN Listener</label>
+                    <label class="switch">
+                        <input type="checkbox" id="lorawan-enable-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="lorawan-port">Gateway Port</label>
+                    <input type="number" id="lorawan-port" value="1700">
+                    <small>Default Semtech UDP port. Ensure no other service is using this port.</small>
+                </div>
+                <div class="form-group">
+                    <label for="lorawan-appskey">Application Session Key (AppSKey)</label>
+                    <input type="text" id="lorawan-appskey" placeholder="e.g., 2B7E151628AED2A6ABF7158809CF4F3C">
+                    <small>A shared 128-bit (32-char hex) key for all ABP devices.</small>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <span id="lorawan-status" class="status-message">Not configured</span>
+                </div>
+
+                <!-- REPOSITIONED: Save Button Above Log -->
+                <div class="form-actions" style="margin-bottom: 20px;">
+                    <button id="lorawan-save-btn" class="button">Save Configuration</button>
+                    <span id="lorawan-save-status" class="status-message"></span>
+                </div>
+
+<!-- LoRaWAN Log -->
+<div class="log-container">
+    <div class="log-header plugin-log-header" data-plugin="lorawan">
+        <div class="log-title-group">
+            <h3>LoRaWAN Log</h3>
+        </div>
+        <span class="log-toggle-arrow">▶</span>
+    </div>
+    <div class="plugin-log-content" data-plugin="lorawan" style="display: none;"></div>
+</div>
+            </div>
+        </div>
+
+        <!-- MODBUS Poller Panel -->
+        <div id="modbus-poller" class="tab-content" data-mode="receive">
+            <div class="settings-form">
+                <p class="settings-note info">Actively polls a target MODBUS TCP device for register data.</p>
+                <div class="form-group-inline">
+                    <label for="mbpoller-enable-toggle">Enable MODBUS Poller</label>
+                    <label class="switch">
+                        <input type="checkbox" id="mbpoller-enable-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="mbpoller-ip">Target IP Address</label>
+                    <input type="text" id="mbpoller-ip" placeholder="e.g., 192.168.1.50">
+                </div>
+                <div class="form-group">
+                    <label for="mbpoller-port">Port</label>
+                    <input type="number" id="mbpoller-port" value="502">
+                </div>
+                <div class="form-group">
+                    <label for="mbpoller-unit-id">Unit ID</label>
+                    <input type="number" id="mbpoller-unit-id" value="1">
+                </div>
+                <div class="form-group">
+                    <label for="mbpoller-start-reg">Start Register</label>
+                    <input type="number" id="mbpoller-start-reg" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="mbpoller-count">Register Count</label>
+                    <input type="number" id="mbpoller-count" value="10">
+                </div>
+                <div class="form-group">
+                    <label for="mbpoller-interval">Poll Interval (Seconds)</label>
+                    <input type="number" id="mbpoller-interval" value="60" min="5">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <span id="mbpoller-status" class="status-message">Not configured</span>
+                </div>
+
+                <!-- REPOSITIONED: Save Button Above Log -->
+                <div class="form-actions" style="margin-bottom: 20px;">
+                    <button id="mbpoller-save-btn" class="button">Save Configuration</button>
+                    <span id="mbpoller-save-status" class="status-message"></span>
+                </div>
+
+<!-- MODBUS Poller Log -->
+<div class="log-container">
+    <div class="log-header plugin-log-header" data-plugin="modbus">
+        <div class="log-title-group">
+            <h3>MODBUS Poller Log</h3>
+        </div>
+        <span class="log-toggle-arrow">▶</span>
+    </div>
+    <div class="plugin-log-content" data-plugin="modbus" style="display: none;"></div>
+</div>
+        </div>
+
+    </div>
+
+<script src="plugins.js"></script>
+</body>
+</html>
